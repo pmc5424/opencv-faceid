@@ -5,9 +5,6 @@ import numpy as np
 
 DIR = r'/Users/ssraikhelkar/PycharmProjects/opencv-faceid/Faces'
 haar_cascade = cv.CascadeClassifier('haar_face.xml')
-
-# features = np.load('features.npy')
-# labels = np.load('labels.npy')
 face_recognizer = cv.face.LBPHFaceRecognizer_create()
 face_recognizer.read('face_trained.yml')
 
@@ -15,12 +12,14 @@ people = []
 empty = ()
 
 
+# Creates people list based on labeled data in the 'Faces/train' directory
 def create_people():
     for i in os.listdir(os.path.join(DIR, 'train')):
         if i != '.DS_Store':
             people.append(i)
 
 
+# Labels a passed in opencv image and returns a corresponding label and facial coordinates tuple
 def label_image(img):
     gray_img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
@@ -34,7 +33,8 @@ def label_image(img):
     return -1, (0, 0, 0, 0)
 
 
-def face_recognition_display():
+# Live feed of the facial recognition model in action
+def face_recognition_showcase():
     video_capture = cv.VideoCapture(0)
     time.sleep(1.0)
 
@@ -53,6 +53,46 @@ def face_recognition_display():
             break
 
 
+# Performs facial recognition until the face recognized has been labeled the same for at least 50 frames
+# Outputs a string in the terminal to 'log in' with the label associated with the face
+# TODO store images with eyes closed and recognize it to add security
+def face_recognition_authenticate():
+    video_capture = cv.VideoCapture(0)
+    time.sleep(1.0)
+
+    label_counter = []
+    for person in people:
+        label_counter.append(0)
+
+    while video_capture.isOpened():
+        is_true, frame = video_capture.read()
+
+        label, (x, y, w, h) = label_image(frame)
+
+        if label != -1:
+            cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), thickness=2)
+            cv.putText(frame, people[label], (x, y), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0))
+            label_counter[label] += 1
+            cv.imshow('Video Capture', frame)
+
+            max_label_count = 0
+            max_label = 0
+
+            for i in range(len(label_counter)):
+                label_count = label_counter[i]
+                if label_count > max_label_count:
+                    max_label_count = label_count
+                    max_label = i
+
+            if max_label_count > 50:
+                cv.destroyAllWindows()
+                print(f'You have been logged in as {people[max_label]}.')
+                break
+        cv.waitKey(1)
+
+
+# Tests accuracy of the facial recognition model using all the labeled images in the 'Faces/val' directory
+# ONLY WORKS WHEN ALL LABELS USED IN TRAINING HAVE AT LEAST 1 IMAGE FOR VALIDATION
 def test_all_val():
     val_dir = os.path.join(DIR, 'val')
     num_correct = 0
@@ -82,5 +122,6 @@ def test_all_val():
 
 if __name__ == '__main__':
     create_people()
-    face_recognition_display()
+    # face_recognition_showcase()
+    # face_recognition_authenticate()
     # test_all_val()

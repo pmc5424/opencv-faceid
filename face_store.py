@@ -10,6 +10,7 @@ features = []
 labels = []
 
 
+# Creates training data for face recognition model
 def create_train():
     people = []
     for i in os.listdir(DIR):
@@ -34,6 +35,7 @@ def create_train():
                 labels.append(label)
 
 
+# Captures and stores faces in grayscale to a directory labeled with a name for training
 def face_frame_capture(curr_photo_num, prompt):
     video_capture = cv.VideoCapture(0)
 
