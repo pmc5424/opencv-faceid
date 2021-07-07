@@ -5,7 +5,7 @@ import cv2 as cv
 
 haar_cascade = cv.CascadeClassifier('haar_face.xml')
 name = ''
-DIR = r'/Users/ssraikhelkar/PycharmProjects/opencv-faceid/Faces/train'
+DIR = os.path.join(os.getcwd(), os.path.join('Faces', 'train'))
 features = []
 labels = []
 
@@ -60,7 +60,8 @@ def face_frame_capture(curr_photo_num, prompt):
         faces_rect = haar_cascade.detectMultiScale(frame, scaleFactor=1.1, minNeighbors=3)
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         for (x, y, w, h) in faces_rect:
-            cv.imwrite(f'Faces/train/{name}/{curr_photo_num}.jpg', gray[y:y + h, x:x + w])
+            cv.imwrite(f'{os.path.join(os.getcwd(), "Faces", "train", name, str(curr_photo_num))}.jpg',
+                       gray[y:y + h, x:x + w])
             cv.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), thickness=2)
             curr_photo_num += 1
 
@@ -72,8 +73,8 @@ if __name__ == '__main__':
 
     name = input('Enter tne name to associate with your face (<First Name> <Last Name>): ')
 
-    if not os.path.isdir(f'Faces/train/{name}'):
-        os.mkdir(f'Faces/train/{name}')
+    if not os.path.isdir(os.path.join('Faces', 'train', name)):
+        os.mkdir(os.path.join('Faces', 'train', name))
 
         input('Direct your face directly to the camera. Press Enter when ready for capturing...')
         face_frame_capture(0, 0)
@@ -104,7 +105,7 @@ if __name__ == '__main__':
         choice = input('Your face is already stored. Delete and retrain model without face? <y/n>: ')
 
         if choice == 'y':
-            shutil.rmtree(f'Faces/train/{name}')
+            shutil.rmtree(os.path.join('Faces', 'train', name))
 
             print('---------Performing training-------------')
             create_train()
