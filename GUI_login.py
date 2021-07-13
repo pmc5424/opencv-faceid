@@ -1,3 +1,4 @@
+import time
 import cv2 as cv
 import PySimpleGUI as sg
 import os
@@ -50,6 +51,7 @@ def label_image(img):
     empty = ()
 
     faces_rect = haar_cascade.detectMultiScale(gray_img, scaleFactor=1.1, minNeighbors=3)
+
     if faces_rect is not empty:
         for (x, y, w, h) in faces_rect:
             face_roi = gray_img[y:y + h, x:x + w]
@@ -60,21 +62,21 @@ def label_image(img):
 
 
 # Set a theme for the GUIs
-sg.theme('Black')
+sg.theme('DarkBlue17')
 
-# Create the various layouts for the different screens of the GUI
+# Create the various layouts for the different GUIs
 
 login_layout = [[sg.Text("Log in to Presence Browser", auto_size_text=True, key='-LOGIN-TEXT-')],
-                [sg.Text("Enter your full name: "), sg.InputText('', enable_events=True, key='-DISPLAYNAME-')],
-                [sg.Button("Login", bind_return_key=True, pad=(5, 50))]]
+                [sg.Text("Enter your full name: "), sg.InputText('', enable_events=True, key='-DISPLAY-NAME-')],
+                [sg.Button("Login", bind_return_key=True, pad=(5, 10))]]
 
 new_user_layout = [[sg.Text("Direct your face toward the camera. Press Next when you're ready.                        "
                             "       ",
-                            auto_size_text=True, key='-PROMPTTEXT-')],
+                            auto_size_text=True, key='-PROMPT-TEXT-')],
                    [sg.Image(filename="", key="-IMAGE-")],
                    [sg.Button("Next", size=(10, 1), visible=True, bind_return_key=True, key='-NEXT-')]]
 
-authenticate_layout = [[sg.Text("Direct your face to the camera to log in.", key='-PROMPTTEXT-')],
+authenticate_layout = [[sg.Text("Direct your face to the camera to log in.", key='-PROMPT-TEXT-')],
                        [sg.Image(filename="", key="-IMAGE-")],
                        [sg.Button("Login", size=(10, 1), visible=False)]]
 
@@ -82,7 +84,7 @@ authenticate_layout = [[sg.Text("Direct your face to the camera to log in.", key
 # Login function that opens a login GUI and retrieves the user's desired DisplayName
 # TODO add delete option that deletes the images associated with a user and retrains the facial recognition model
 def login():
-    login_window = sg.Window("Presence Browser Login", login_layout, size=(400, 175), return_keyboard_events=True)
+    login_window = sg.Window("Presence Browser Login", login_layout, size=(400, 120), return_keyboard_events=True)
 
     while True:
         event, values = login_window.read()
@@ -91,11 +93,16 @@ def login():
             login_window.close()
             return -1, ''
 
+        # If the user presses the 'Login' button
         if event == "Login":
-            name = values['-DISPLAYNAME-']
+            name = values['-DISPLAY-NAME-']
+
+            # Check if the model has already been trained on 'name' and authenticate if so
             if not os.path.isdir(os.path.join(os.getcwd(), 'Faces', 'train', name)):
                 login_window.close()
                 return 0, name
+
+            # If model not trained on 'name', capture new images and train model on new face
             else:
                 login_window.close()
                 return 1, name
@@ -104,17 +111,20 @@ def login():
 # Function that stores faces labeled as name to retrain the face recognizer for a new user
 # TODO make sure a 'new user' does not have a face already existing in the database
 def new_user_create(name):
-    new_user_create_window = sg.Window("Create New User", new_user_layout, size=(800, 800), return_keyboard_events=True)
-    prompts = ["Direct your face toward the camera. Press Next when you're ready.                        ",
-               "Tilt your face to the right and face the camera. Press Next when you're ready.",
-               "Tilt your face to the left and face the camera. Press Next when you're ready.",
+    vid_cap = cv.VideoCapture(0)
+    time.sleep(1.00)
+
+    new_user_create_window = sg.Window("Create New User", new_user_layout, size=(800, 800), element_justification='c')
+
+    prompts = ["Direct your face toward the camera. Press Next when you're ready.                                     "
+               "      ",
+               "Now slightly tilt your face to the right and face the camera. Press Next when you're ready.",
+               "Again slightly tilt your face but to the left. Press Next when you're ready.",
                "Done! Now press next to train the facial recognition model.",
-               '',
                "Finished setup! Restart and log in with your full name."]
     prompt = 0
     os.mkdir(os.path.join(os.getcwd(), 'Faces', 'train', name))
     curr_photo_num = 1
-    vid_cap = cv.VideoCapture(0)
 
     while True:
         event, values = new_user_create_window.read(timeout=0)
@@ -130,22 +140,24 @@ def new_user_create(name):
         img = cv.imencode(".png", frame)[1].tobytes()
         new_user_create_window.FindElement("-IMAGE-").update(data=img)
 
-        if not new_user_create_window.FindElement('-NEXT-').visible and curr_photo_num < 60:
+        if not new_user_create_window.FindElement('-NEXT-').visible and curr_photo_num <= 60:
             cv.imwrite(f'{os.path.join(os.getcwd(), "Faces", "train", name, str(curr_photo_num))}.jpg',
                        gray[y:y + h, x:x + w])
             curr_photo_num += 1
 
         if curr_photo_num % 20 == 0:
             new_user_create_window.FindElement('-NEXT-').update(visible=True)
-            new_user_create_window.FindElement('-PROMPTTEXT-').update(visible=True)
+            new_user_create_window.FindElement('-PROMPT-TEXT-').update(visible=True)
 
         if event == "-NEXT-":
-            new_user_create_window.FindElement('-PROMPTTEXT-').update(visible=False)
-            new_user_create_window.FindElement('-NEXT-').update(visible=False)
             prompt += 1
 
+            if prompt <= 3:
+                new_user_create_window.FindElement('-PROMPT-TEXT-').update(visible=False)
+                new_user_create_window.FindElement('-NEXT-').update(visible=False)
+
             # Perform training once all necessary training images are stored
-            if prompt == len(prompts) - 2:
+            elif prompt == len(prompts) - 1:
                 create_train()
 
                 global features, labels, face_recognizer
@@ -158,17 +170,21 @@ def new_user_create(name):
                 np.save('features.npy', features)
                 np.save('labels.npy', labels)
 
-                new_user_create_window.FindElement('-PROMPTTEXT-').update(visible=True)
-                new_user_create_window.FindElement('-PROMPTTEXT-').update('Model trained successfully.')
+                new_user_create_window.FindElement('-PROMPT-TEXT-').update(visible=True)
+                new_user_create_window.FindElement('-PROMPT-TEXT-').update('Model trained successfully.')
+                new_user_create_window.FindElement('-NEXT-').update(visible=True)
 
             # Exit once all steps of set-up have been completed
             elif prompt == len(prompts):
                 new_user_create_window.close()
                 return 1
 
-            # Update prompt text when 'Next' button is pressed
             else:
-                new_user_create_window.FindElement('-PROMPTTEXT-').update(prompts[prompt])
+                new_user_create_window.FindElement('-NEXT-').update(visible=True)
+                new_user_create_window.FindElement('-PROMPT-TEXT-').update(visible=True)
+
+        # Update prompt text when 'Next' button is pressed
+        new_user_create_window.FindElement('-PROMPT-TEXT-').update(prompts[prompt])
 
         if event == sg.WIN_CLOSED:
             new_user_create_window.close()
@@ -178,9 +194,12 @@ def new_user_create(name):
 # Function that verifies whether a user logging in has a face that matches how the face recognizer labels the
 # already existing images from training
 def authenticate(name):
-    authenticate_window = sg.Window(f"Login as {name}", authenticate_layout, size=(800, 800),
-                                    return_keyboard_events=True)
     vid_cap = cv.VideoCapture(0)
+    time.sleep(1.00)
+
+    authenticate_window = sg.Window(f"Login as {name}", authenticate_layout, size=(800, 800),
+                                    element_justification='c')
+
     login_label = people.index(name)
     label_count = 0
 
@@ -192,14 +211,13 @@ def authenticate(name):
 
         if label == login_label and confidence < 40:
             cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), thickness=2)
-            cv.putText(frame, people[label], (x, y), cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0))
             label_count += 1
 
         img = cv.imencode(".png", frame)[1].tobytes()
         authenticate_window.FindElement("-IMAGE-").update(data=img)
 
         if label_count > 50:
-            authenticate_window.FindElement('-PROMPTTEXT-').update(f'Identified as {name}')
+            authenticate_window.FindElement('-PROMPT-TEXT-').update(f'Identified as {name}')
             authenticate_window.FindElement('Login').update(visible=True)
 
         if event == 'Login':
