@@ -243,4 +243,4 @@ if __name__ == '__main__':
     if request_code == 1:
         create_people()
         face_recognizer.read('face_trained.yml')
-        authenticate(display_name, 100)
+        authenticate(display_name, 40)
