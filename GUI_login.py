@@ -193,7 +193,7 @@ def new_user_create(name):
 
 # Function that verifies whether a user logging in has a face that matches how the face recognizer labels the
 # already existing images from training
-def authenticate(name):
+def authenticate(name, confidence_value):
     vid_cap = cv.VideoCapture(0)
     time.sleep(1.00)
 
@@ -209,7 +209,7 @@ def authenticate(name):
         ret, frame = vid_cap.read()
         label, (x, y, w, h), confidence = label_image(frame)
 
-        if label == login_label and confidence < 40:
+        if label == login_label and confidence < confidence_value:
             cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), thickness=2)
             label_count += 1
 
@@ -243,4 +243,4 @@ if __name__ == '__main__':
     if request_code == 1:
         create_people()
         face_recognizer.read('face_trained.yml')
-        authenticate(display_name)
+        authenticate(display_name, 100)

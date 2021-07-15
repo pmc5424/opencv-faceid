@@ -128,4 +128,4 @@ def face_recognition_authenticate():
 if __name__ == '__main__':
     create_people()
     face_recognition_showcase()
-    face_recognition_authenticate()
+    # face_recognition_authenticate()
