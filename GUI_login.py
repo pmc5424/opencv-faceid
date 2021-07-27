@@ -127,11 +127,19 @@ def new_user_create(name):
     prompt = 0
     os.mkdir(os.path.join(os.getcwd(), 'Faces', 'train', name))
     curr_photo_num = 1
+    BRIGHTNESS = 160.0
 
     while True:
         event, values = new_user_create_window.read(timeout=0)
 
         ret, frame = vid_cap.read()
+
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+        curr_brightness = np.average(frame[:, :, 2])
+        brightness_diff = BRIGHTNESS - curr_brightness
+        if brightness_diff < 50:
+            frame[:, :, 2] = np.clip(frame[:, :, 2] + brightness_diff, 0, 255)
+        frame = cv.cvtColor(frame, cv.COLOR_HSV2BGR)
 
         faces_rect = haar_cascade.detectMultiScale(frame, scaleFactor=1.1, minNeighbors=3)
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
