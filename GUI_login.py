@@ -2,8 +2,6 @@ import time
 import cv2 as cv
 import PySimpleGUI as sg
 import os
-
-import numpy
 import numpy as np
 
 haar_cascade = cv.CascadeClassifier('haar_face.xml')
@@ -86,7 +84,9 @@ authenticate_layout = [[sg.Text("Direct your face to the camera to log in.", key
 # Login function that opens a login GUI and retrieves the user's desired DisplayName
 # TODO add delete option that deletes the images associated with a user and retrains the facial recognition model
 def login():
-    login_window = sg.Window("Presence Browser Login", login_layout, size=(400, 120), return_keyboard_events=True)
+    login_window = sg.Window("Presence Browser Login", login_layout, size=(400, 120),
+                             return_keyboard_events=True).Finalize()
+    login_window.maximize()
 
     while True:
         event, values = login_window.read()
@@ -113,18 +113,23 @@ def login():
 # Function that stores faces labeled as name to retrain the face recognizer for a new user
 # TODO make sure a 'new user' does not have a face already existing in the database
 def new_user_create(name):
+    # Start webcam and wait for warm-up
     vid_cap = cv.VideoCapture(0)
     time.sleep(1.00)
 
-    new_user_create_window = sg.Window("Create New User", new_user_layout, size=(800, 800), element_justification='c')
+    new_user_create_window = sg.Window("Create New User", new_user_layout, location=(0, 0),
+                                       element_justification='c').Finalize()
+    new_user_create_window.maximize()
 
+    # List of prompts to be displayed to the user
     prompts = ["Direct your face toward the camera. Press Next when you're ready.                                     "
                "      ",
-               "Now slightly tilt your face to the right and face the camera. Press Next when you're ready.",
+               "Now slightly tilt your face to the right and face the camera. Press Next when ready.",
                "Again slightly tilt your face but to the left. Press Next when you're ready.",
                "Done! Now press next to train the facial recognition model.",
                "Finished setup! Restart and log in with your full name."]
     prompt = 0
+
     os.mkdir(os.path.join(os.getcwd(), 'Faces', 'train', name))
     curr_photo_num = 1
     BRIGHTNESS = 160.0
@@ -132,15 +137,21 @@ def new_user_create(name):
     while True:
         event, values = new_user_create_window.read(timeout=0)
 
+        # Read from web cam and get the frame being captured
         ret, frame = vid_cap.read()
 
+        # Change the frame to HSV, adjust the brightness, then convert back to BGR
         frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
         curr_brightness = np.average(frame[:, :, 2])
         brightness_diff = BRIGHTNESS - curr_brightness
         if brightness_diff < 50:
+            new_user_create_window.FindElement('-PROMPT-TEXT-').update(prompts[prompt])
             frame[:, :, 2] = np.clip(frame[:, :, 2] + brightness_diff, 0, 255)
+        else:
+            new_user_create_window.FindElement('-PROMPT-TEXT-').update('Please find better lighting conditions.')
         frame = cv.cvtColor(frame, cv.COLOR_HSV2BGR)
 
+        # Use haar cascade to detect face on frame
         faces_rect = haar_cascade.detectMultiScale(frame, scaleFactor=1.1, minNeighbors=3)
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
@@ -150,6 +161,7 @@ def new_user_create(name):
         img = cv.imencode(".png", frame)[1].tobytes()
         new_user_create_window.FindElement("-IMAGE-").update(data=img)
 
+        # Save region of frame with a face to training directory labeled by user's name
         if not new_user_create_window.FindElement('-NEXT-').visible and curr_photo_num <= 60:
             cv.imwrite(f'{os.path.join(os.getcwd(), "Faces", "train", name, str(curr_photo_num))}.jpg',
                        gray[y:y + h, x:x + w])
@@ -159,6 +171,7 @@ def new_user_create(name):
             new_user_create_window.FindElement('-NEXT-').update(visible=True)
             new_user_create_window.FindElement('-PROMPT-TEXT-').update(visible=True)
 
+        # Show the next prompt when 'Next' is clicked
         if event == "-NEXT-":
             prompt += 1
 
@@ -204,11 +217,13 @@ def new_user_create(name):
 # Function that verifies whether a user logging in has a face that matches how the face recognizer labels the
 # already existing images from training
 def authenticate(name, confidence_value):
+    # Start web cam and wait for warm-up
     vid_cap = cv.VideoCapture(0)
     time.sleep(1.00)
 
-    authenticate_window = sg.Window(f"Login as {name}", authenticate_layout, size=(800, 800),
-                                    element_justification='c')
+    authenticate_window = sg.Window(f"Login as {name}", authenticate_layout, location=(0, 0),
+                                    element_justification='c').Finalize()
+    authenticate_window.maximize()
 
     login_label = people.index(name)
     label_count = 0
@@ -217,16 +232,24 @@ def authenticate(name, confidence_value):
     while True:
         event, values = authenticate_window.read(timeout=0)
 
+        # Read from the web cam and capture frames
         ret, frame = vid_cap.read()
+
+        # Obtain the label, region of interest, and confidence value for the frame
         label, (x, y, w, h), confidence = label_image(frame)
 
+        # Convert frame to HSV, adjust brightness, then convert back to BGR
         frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
         curr_brightness = np.average(frame[:, :, 2])
         brightness_diff = BRIGHTNESS - curr_brightness
         if brightness_diff < 50:
+            authenticate_window.FindElement('-PROMPT-TEXT-').update('Direct your face to the camera to log in.')
             frame[:, :, 2] = np.clip(frame[:, :, 2] + brightness_diff, 0, 255)
+        else:
+            authenticate_window.FindElement('-PROMPT-TEXT-').update('Please find better lighting conditions.')
         frame = cv.cvtColor(frame, cv.COLOR_HSV2BGR)
 
+        # If face labeled with enough confidence, increment label count and display face rect. on frame
         if label == login_label and confidence < confidence_value:
             cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), thickness=2)
             label_count += 1
@@ -234,10 +257,12 @@ def authenticate(name, confidence_value):
         img = cv.imencode(".png", frame)[1].tobytes()
         authenticate_window.FindElement("-IMAGE-").update(data=img)
 
+        # Once label count incremented at least 50 times, display login button and success prompt
         if label_count > 50:
             authenticate_window.FindElement('-PROMPT-TEXT-').update(f'Identified as {name}')
             authenticate_window.FindElement('Login').update(visible=True)
 
+        # Close window and web cam when 'Login' clicked
         if event == 'Login':
             authenticate_window.close()
             vid_cap.release()
