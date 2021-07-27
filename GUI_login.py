@@ -2,6 +2,8 @@ import time
 import cv2 as cv
 import PySimpleGUI as sg
 import os
+
+import numpy
 import numpy as np
 
 haar_cascade = cv.CascadeClassifier('haar_face.xml')
@@ -202,12 +204,20 @@ def authenticate(name, confidence_value):
 
     login_label = people.index(name)
     label_count = 0
+    BRIGHTNESS = 160.0
 
     while True:
         event, values = authenticate_window.read(timeout=0)
 
         ret, frame = vid_cap.read()
         label, (x, y, w, h), confidence = label_image(frame)
+
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+        curr_brightness = np.average(frame[:, :, 2])
+        brightness_diff = BRIGHTNESS - curr_brightness
+        if brightness_diff < 50:
+            frame[:, :, 2] = np.clip(frame[:, :, 2] + brightness_diff, 0, 255)
+        frame = cv.cvtColor(frame, cv.COLOR_HSV2BGR)
 
         if label == login_label and confidence < confidence_value:
             cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), thickness=2)
@@ -243,4 +253,4 @@ if __name__ == '__main__':
     if request_code == 1:
         create_people()
         face_recognizer.read('face_trained.yml')
-        authenticate(display_name, 40)
+        authenticate(display_name, 50)
