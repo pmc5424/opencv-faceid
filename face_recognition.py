@@ -1,6 +1,7 @@
 import time
 import cv2 as cv
 import os
+import numpy as np
 
 DIR = os.path.join(os.getcwd(), 'Faces', 'train')
 haar_cascade = cv.CascadeClassifier('haar_face.xml')
@@ -96,36 +97,37 @@ def face_recognition_authenticate():
             break
 
 
-# # Tests accuracy of the facial recognition model using all the labeled images in the 'Faces/val' directory
-# # ONLY WORKS WHEN ALL LABELS USED IN TRAINING HAVE AT LEAST 1 IMAGE FOR VALIDATION
-# def test_all_val():
-#     val_dir = os.path.join(DIR, 'val')
-#     num_correct = 0
-#     num_total = 0
-#     label_counter = np.zeros(len(people))
-#
-#     for person in people:
-#         path = os.path.join(val_dir, person)
-#
-#         img_list = os.listdir(path)
-#
-#         for img in img_list:
-#             if img != '.DS_Store':
-#                 img = cv.imread(os.path.join(path, img))
-#                 label, face_rect = label_image(img)
-#                 if people[label] == person:
-#                     num_correct += 1
-#                     label_counter[label] += 1
-#                 num_total += 1
-#
-#     print(f'Model was correct {num_correct} times and had {num_correct} / {num_total} or'
-#           f' {round(num_correct / num_total * 100, 3)}% accuracy.')
-#     print()
-#     for person in people:
-#         print(f'{person} was accurately recognized {label_counter[people.index(person)]} times')
+# Tests accuracy of the facial recognition model using all the labeled images in the 'Faces/val' directory
+# ONLY WORKS WHEN ALL LABELS USED IN TRAINING HAVE AT LEAST 1 IMAGE FOR VALIDATION
+def test_all_val():
+    val_dir = os.path.join(os.getcwd(), 'Faces', 'val')
+    num_correct = 0
+    num_total = 0
+    label_counter = np.zeros(len(people))
+
+    for person in people:
+        path = os.path.join(val_dir, person)
+
+        img_list = os.listdir(path)
+
+        for img in img_list:
+            if img != '.DS_Store':
+                img = cv.imread(os.path.join(path, img))
+                label, (x, y, w, h), confidence = label_image(img)
+                if people[label] == person:
+                    num_correct += 1
+                    label_counter[label] += 1
+                num_total += 1
+
+    print(f'Model was correct {num_correct} times and had {num_correct} / {num_total} or'
+          f' {round(num_correct / num_total * 100, 3)}% accuracy.')
+    print()
+    for person in people:
+        print(f'{person} was accurately recognized {label_counter[people.index(person)]} times')
 
 
 if __name__ == '__main__':
     create_people()
     face_recognition_showcase()
     # face_recognition_authenticate()
+    test_all_val()
