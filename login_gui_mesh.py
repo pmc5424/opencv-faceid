@@ -61,7 +61,7 @@ new_user_layout = [[sg.Text("Direct your face toward the camera. Press Next when
                    [sg.Image(filename="", key="-IMAGE-")],
                    [sg.Button("Next", size=(10, 1), visible=True, bind_return_key=True, key='-NEXT-')]]
 
-authenticate_layout = [[sg.Text("Direct your face to the camera to log in.", key='-PROMPT-TEXT-')],
+authenticate_layout = [[sg.Text("Come close and direct your face to the camera to log in.", key='-PROMPT-TEXT-')],
                        [sg.Image(filename="", key="-IMAGE-")],
                        [sg.Button("Login", size=(10, 1), visible=False)]]
 
@@ -105,7 +105,7 @@ def new_user_create(name):
     new_user_create_window.maximize()
 
     # List of prompts to be displayed to the user
-    prompts = ["Direct your face toward the camera. Press Next when you're ready.                                     "
+    prompts = ["Come close and direct your face toward the camera. Press Next when you're ready.                       "
                "      ",
                "Now slightly tilt your face to the right and face the camera. Press Next when ready.",
                "Again slightly tilt your face but to the left. Press Next when you're ready.",
@@ -129,8 +129,9 @@ def new_user_create(name):
 
         if results.multi_face_landmarks:
             for faceLms in results.multi_face_landmarks:
-                face_landmarks = faceLms
-                face_canvas = np.zeros((imgRGB.shape[0], imgRGB.shape[1], 3), dtype='uint8')
+                # TODO
+                # face_canvas = np.zeros((imgRGB.shape[0], imgRGB.shape[1], 3), dtype='uint8')
+                face_canvas = imgRGB
                 mpDraw.draw_landmarks(face_canvas, faceLms, mpFaceMesh.FACE_CONNECTIONS,
                                       drawSpec, drawSpec)
 
@@ -153,7 +154,8 @@ def new_user_create(name):
 
                 face_canvas_roi = face_canvas[cy_min:cy_max, cx_min:cx_max]
 
-                if face_canvas_roi.size > 0:
+                if face_canvas_roi.size > 0 and (cx_max - cx_min) * (cy_max - cy_min) > 0.12 * (
+                        imgRGB.shape[0] * imgRGB.shape[1]):
                     mpDraw.draw_landmarks(frame, faceLms, mpFaceMesh.FACE_CONNECTIONS,
                                           drawSpec, drawSpec)
                     curr_face_canvas_roi = face_canvas_roi
@@ -244,7 +246,9 @@ def authenticate(name, confidence_value):
 
         if results.multi_face_landmarks:
             for faceLms in results.multi_face_landmarks:
-                face_canvas = np.zeros((imgRGB.shape[0], imgRGB.shape[1], 3), dtype='uint8')
+                # TODO
+                # face_canvas = np.zeros((imgRGB.shape[0], imgRGB.shape[1], 3), dtype='uint8')
+                face_canvas = imgRGB
                 mpDraw.draw_landmarks(face_canvas, faceLms, mpFaceMesh.FACE_CONNECTIONS,
                                       drawSpec, drawSpec)
 
@@ -267,7 +271,8 @@ def authenticate(name, confidence_value):
 
                 face_canvas_roi = face_canvas[cy_min:cy_max, cx_min:cx_max]
 
-                if face_canvas_roi.size > 0:
+                if face_canvas_roi.size > 0 and (cx_max - cx_min) * (cy_max - cy_min) > 0.12 * (
+                        imgRGB.shape[0] * imgRGB.shape[1]):
                     gray_face_canvas_roi = cv.cvtColor(face_canvas_roi, cv.COLOR_RGB2GRAY)
                     x, y = cx_min, cy_min
 
@@ -313,4 +318,4 @@ if __name__ == '__main__':
     if request_code == 1:
         create_people()
         face_recognizer.read('face_mesh_trained.yml')
-        authenticate(display_name, 1.00)
+        authenticate(display_name, 30)

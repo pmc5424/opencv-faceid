@@ -36,7 +36,8 @@ def face_mesh_recognition_showcase():
 
         if results.multi_face_landmarks:
             for faceLms in results.multi_face_landmarks:
-                face_canvas = np.zeros((imgRGB.shape[0], imgRGB.shape[1], 3), dtype='uint8')
+                face_canvas = imgRGB
+                # face_canvas = np.zeros((imgRGB.shape[0], imgRGB.shape[1], 3), dtype='uint8')
                 mpDraw.draw_landmarks(face_canvas, faceLms, mpFaceMesh.FACE_CONNECTIONS,
                                       drawSpec, drawSpec)
 
