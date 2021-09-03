@@ -1,10 +1,10 @@
-# opencv-faceid
-A proof of concept of Facial Recogniton-based SSO using OpenCV for Presence Browser.
+# Facial Recognition SSO
+A proof of concept of a Facial Recogniton-based SSO for the Presence Browser project using OpenCV and MediaPipe Face Mesh.
 
 
-Utilizes Google's Facemesh API to identify faces in a webcam's video feed and then capture an image of their face and its key points.
+Utilizes the MediaPipe Face Mesh API to identify faces in a webcam's video feed and then capture an image of their face and its key points.
 
-Grayscaled Face Image with Key Points from Facemesh API used for Model Training
+Grayscaled Face Image with Key Points from Face Mesh API used for Model Training
 
 [![Sample Training Image](https://i.postimg.cc/NjTvZGMn/image.png)](https://postimg.cc/G4cfyCvP)
 
